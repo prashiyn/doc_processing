@@ -1,0 +1,10 @@
+# DeepSeek-OCR via Ollama (same pattern as GLM-OCR).
+# See: https://github.com/deepseek-ai/DeepSeek-OCR (vLLM scripts; we use /api/generate for Ollama).
+# Prerequisite: ollama pull deepseek-ocr:latest && ollama serve
+pipeline:
+  ocr_api:
+    api_host: localhost
+    api_port: 11434
+    api_path: /api/generate
+    model: deepseek-ocr:latest
+    request_timeout: 300

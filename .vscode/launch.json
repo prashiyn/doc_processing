@@ -1,0 +1,119 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+    
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+        {
+            "name": "Docling: PDF → Markdown (easyocr, embed images)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/test_pdf_to_markdown_docling.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "${input:pdfPath}",
+                "--backend",
+                "easyocr",
+                "--merge-tables"
+            ]
+        },
+        {
+            "name": "Docling: PDF → Markdown (vlm, embed images)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/test_pdf_to_markdown_docling.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "${input:pdfPath}",
+                "--backend",
+                "vlm",
+                "--merge-tables"
+            ]
+        },
+        {
+            "name": "Docling: PDF → Markdown (easyocr, no embedded images)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/test_pdf_to_markdown_docling.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "${input:pdfPath}",
+                "--backend",
+                "easyocr",
+                "--merge-tables",
+                "--no-embed-image"
+            ]
+        },
+        {
+            "name": "FFP: PDF → chunks.json (vlm)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/test_ffp_pipeline.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "${input:pdfPath}",
+                "--backend",
+                "vlm",
+                "--doc-id",
+                "${input:ffpDocId}",
+                "--out",
+                "${workspaceFolder}/data/temp/chunks.json"
+            ]
+        },
+        {
+            "name": "FFP: PDF → chunks.json (easyocr)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/test_ffp_pipeline.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "${input:pdfPath}",
+                "--backend",
+                "easyocr",
+                "--doc-id",
+                "${input:ffpDocId}",
+                "--out",
+                "${workspaceFolder}/data/temp/chunks.json"
+            ]
+        }
+    ]
+    ,
+    "inputs": [
+        {
+            "id": "pdfPath",
+            "type": "promptString",
+            "description": "Absolute or workspace-relative path to the PDF to convert",
+            "default": "${workspaceFolder}/data/temp/sample.pdf"
+        },
+        {
+            "id": "ffpDocId",
+            "type": "promptString",
+            "description": "Document ID for chunk IDs",
+            "default": "sample_doc"
+        }
+    ]
+}

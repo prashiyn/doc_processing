@@ -1,0 +1,16 @@
+# GLM-OCR SDK config for local Ollama deployment.
+# See: https://github.com/zai-org/GLM-OCR/blob/main/examples/ollama-deploy/README.md
+# Prerequisite: ollama pull glm-ocr:latest && ollama serve
+pipeline:
+  maas:
+    enabled: false
+
+  ocr_api:
+    api_host: localhost
+    api_port: 11434
+    # GLM-OCR SDK uses Ollama /api/generate only (see glmocr/ocr_client.py).
+    api_path: /api/generate
+    model: glm-ocr:latest
+    api_mode: ollama_generate
+
+  enable_layout: false

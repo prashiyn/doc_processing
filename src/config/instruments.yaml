@@ -1,0 +1,16 @@
+# Instrument configuration
+# Define universe of instruments for strategies
+
+nse_equity:
+  exchange: "NSE"
+  segment: "NSE_EQ"
+  universe:
+    # Add instrument keys here
+    # Example: "NSE_EQ|INE467B01029"
+    - "NSE_EQ|INE467B01029"  # Example - replace with actual instruments
+
+defaults:
+  tick_size: 0.05
+  lot_size: 1
+  timezone: "Asia/Kolkata"
+

@@ -1,0 +1,29 @@
+# Chunking pipeline configuration.
+# Controls model selection (via LiteLLM model strings) and core algorithm parameters.
+
+models:
+  # Vision-language model for table-to-text conversion.
+  table_extraction_model: "openai/gpt-4o-mini"
+
+  # Vision-language model for chart/figure captioning.
+  image_caption_model: "openai/gpt-4o-mini"
+
+  # Text model for coreference resolution.
+  coreference_model: "openai/gpt-4o-mini"
+
+  # Text model for section-level summarization.
+  section_summarization_model: "openai/gpt-4o-mini"
+
+params:
+  # Maximum characters per chunk after splitting bundles.
+  max_chunk_chars: 900
+
+  # Minimum characters for a block before forcing a new chunk.
+  min_block_chars: 200
+
+  # Cosine-similarity threshold for deduplication (0–1).
+  dedup_similarity_threshold: 0.7
+
+  # Number of previous chunks used as coreference context.
+  coreference_context_k: 4
+

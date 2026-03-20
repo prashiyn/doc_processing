@@ -1,0 +1,35 @@
+---
+description: Python coding standards and best practices for this project
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python Best Practices
+
+- Use Python 3.11+ features: `list[str]`, `dict[str, Any]`, pattern matching where it helps.
+- Prefer `pathlib.Path` over `os.path` for file paths.
+- Use `from __future__ import annotations` at top of files that use forward refs or long type hints.
+- Prefer explicit async/sync: use `async def` only when awaiting I/O; keep CPU-bound logic sync.
+- Handle resources with context managers or try/finally; avoid leaving temp files or handles open.
+
+## Error handling
+
+```python
+# BAD: swallow or vague
+try:
+    convert(f)
+except Exception:
+    pass
+
+# GOOD: log and re-raise or return structured error
+try:
+    return convert(f)
+except ConversionError as e:
+    logger.warning("Conversion failed", extra={"path": path, "error": str(e)})
+    raise HTTPException(422, detail=str(e)) from e
+```
+
+## Imports and dependencies
+
+- Keep heavy imports (docling, unstructured, litellm) inside the functions that use them to speed up startup and limit optional dependency impact.
+- Use `typing.TYPE_CHECKING` and string annotations when needed to avoid circular imports.

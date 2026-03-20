@@ -1,0 +1,32 @@
+---
+description: Document conversion and chunking for RAG
+globs: "**/services/**/*.py,**/chunking*.py"
+alwaysApply: false
+---
+
+# Document Processing and Chunking
+
+- **Conversion**: Prefer the right tool per format: docling for PDF/images (VLM/EasyOCR), markitdown for Office/md/csv, ixbrl-parse for iXBRL, unstructured as fallback. Dispatch by file extension (and content sniff for iXBRL).
+- **Temp files**: Docling, markitdown, and unstructured often need a file path; write upload bytes to a temp file, convert, then `Path(tmp_path).unlink(missing_ok=True)` in a `finally` block.
+- **Chunking**: Use fixed-size chunks with overlap for RAG; avoid splitting mid-sentence when possible (optional: split on sentence/paragraph boundaries). Keep chunk_size and chunk_overlap configurable (e.g. 512 / 64).
+
+## Conversion dispatch
+
+```python
+# BAD: single backend for all types
+def convert(content: bytes) -> str:
+    return unstructured.partition(content)
+
+# GOOD: route by suffix and content
+suffix = Path(filename).suffix.lower()
+if suffix == ".pdf":
+    return await _convert_docling(content, suffix)
+if suffix in (".docx", ".xlsx", ".pptx"):
+    return _convert_markitdown(content, filename)
+return await _convert_unstructured(content, filename, suffix)
+```
+
+## Chunking
+
+- Return `list[str]`; do not include metadata in the chunk string unless the API explicitly asks for it.
+- Overlap should be strictly less than chunk_size to avoid duplicate tokens.
