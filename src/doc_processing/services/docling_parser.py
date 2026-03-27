@@ -38,6 +38,30 @@ def _configure_picture_options(pipeline_options: Any) -> None:
         pdesc.picture_area_threshold = 0.05
 
 
+def _configure_picture_description_vlm(pipeline_options: Any) -> None:
+    """Configure Docling picture-description VLM options consistently."""
+    try:
+        pipeline_options.enable_remote_services = True
+    except Exception:
+        pass
+
+    try:
+        pipeline_options.picture_description_options = (
+            PictureDescriptionVlmEngineOptions.from_preset(
+                "granite_vision",
+                engine_options=MlxVlmEngineOptions(
+                    engine_type=VlmEngineType.API_OLLAMA,
+                ),
+            )
+        )
+        pipeline_options.picture_description_options.prompt = (
+            "Describe the image in three sentences. Be concise and accurate."
+        )
+        pipeline_options.picture_description_options.picture_area_threshold = 0.05
+    except Exception:
+        pass
+
+
 def compare_images(
     hashes: list[Any],
     *,
@@ -196,28 +220,7 @@ def parse_pdf_using_docling(
             )
             if embed_image:
                 _configure_picture_options(pipeline_options)
-                # Ensure Docling invokes picture description over Ollama using
-                # Granite Vision (ibm/granite3.3-vision:2b).
-                try:
-                    pipeline_options.enable_remote_services = True
-                    pipeline_options.picture_description_options = (
-                        PictureDescriptionVlmEngineOptions.from_preset(
-                            "granite_vision",
-                            engine_options=ApiVlmEngineOptions(
-                                runtime_type=VlmEngineType.API_OLLAMA,
-                                timeout=90,
-                                params={"model": "ibm/granite3.3-vision:2b"},
-                            ),
-                        )
-                    )
-                    pipeline_options.picture_description_options.prompt = (
-                        "Describe the image in three sentences. Be concise and accurate."
-                    )
-                    pipeline_options.picture_description_options.picture_area_threshold = (
-                        0.05
-                    )
-                except Exception:
-                    pass
+                _configure_picture_description_vlm(pipeline_options)
             doc_converter = DocumentConverter(
                 format_options={
                     InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
@@ -238,29 +241,7 @@ def parse_pdf_using_docling(
             )
             if embed_image:
                 _configure_picture_options(pipeline_options)
-                # Configure picture description via Ollama (Granite Vision).
-                # Critical fix: use PictureDescriptionVlmEngineOptions instead of
-                # VlmConvertOptions, otherwise Docling won't run the picture
-                # description model.
-                try:
-                    pipeline_options.picture_description_options = (
-                        PictureDescriptionVlmEngineOptions.from_preset(
-                            "granite_vision",
-                            engine_options=MlxVlmEngineOptions(
-                                    engine_type=VlmEngineType.API_OLLAMA,
-                                    # timeout=90,
-                                    # params={"model": "ibm/granite3.3-vision:2b"},
-                            ),
-                        )
-                    )
-                    pipeline_options.picture_description_options.prompt = (
-                        "Describe the image in three sentences. Be concise and accurate."
-                    )
-                    pipeline_options.picture_description_options.picture_area_threshold = (
-                        0.05
-                    )
-                except Exception:
-                    pass
+                _configure_picture_description_vlm(pipeline_options)
             doc_converter = DocumentConverter(
                 format_options={
                     InputFormat.PDF: PdfFormatOption(
@@ -311,6 +292,7 @@ def parse_markdown_using_docling(
                 pipeline_options = getattr(option, "pipeline_options", None)
                 if pipeline_options is not None:
                     _configure_picture_options(pipeline_options)
+                    _configure_picture_description_vlm(pipeline_options)
 
         conv_result = converter.convert(str(path))
         try:
@@ -355,6 +337,7 @@ def parse_html_using_docling(
                 pipeline_options = getattr(option, "pipeline_options", None)
                 if pipeline_options is not None:
                     _configure_picture_options(pipeline_options)
+                    _configure_picture_description_vlm(pipeline_options)
         conv_result = converter.convert(str(path))
         try:
             doc = getattr(conv_result, "document", None)

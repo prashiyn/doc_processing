@@ -16,9 +16,10 @@ if _api_keys_env.exists():
     load_dotenv(_api_keys_env)
 
 from doc_processing.llms.client import LLMClient
+from doc_processing.llms.embeddings import EmbeddingClient
 from doc_processing.llms.config import get_llm_config
 
-__all__ = ["LLMClient", "get_llm_config"]
+__all__ = ["LLMClient", "EmbeddingClient", "get_llm_config"]
 
 # NSE analysis lives in data.interim: from data.interim.nse_analysis import ...
 # Agents: from llms.agents import AgentRunner

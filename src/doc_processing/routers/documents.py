@@ -1,6 +1,6 @@
 """Document processing and chunking endpoints.
 
-All document-processing endpoints (except `/chunk`) support *either*:
+Endpoints support *either*:
 - **URL input**: the file is fetched with NSE-aware logic and written to a temp directory, then deleted.
 - **File upload**: the file bytes are processed directly.
 """
@@ -8,40 +8,49 @@ All document-processing endpoints (except `/chunk`) support *either*:
 import asyncio
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, HttpUrl
 
 from doc_processing.services import (
-    chunk_text,
     file_to_markdown_using_markitdown,
     ocr_to_markdown_deepseek_image,
     ocr_to_markdown_deepseek_pdf,
     ocr_to_markdown_glm,
     pdf_to_markdown_docling,
+    process_using_unstructured as process_using_unstructured_service,
     xbrl_to_markdown,
-    process_file,
 )
 from doc_processing.services.document_fetch import (
     DocumentFetchError,
     fetch_document,
     temp_path_for_document,
 )
-from doc_processing.services.file_processor import FileProcessorResult
+from doc_processing.services.unstructured_parser import FileProcessorResult
 
 router = APIRouter()
 
 
-class ChunkRequest(BaseModel):
-    """Request body for text chunking."""
-    text: str = Field(..., description="Raw text to split into chunks")
-    chunk_size: int = Field(512, ge=1, le=8192, description="Target size per chunk in characters")
-    chunk_overlap: int = Field(64, ge=0, le=2048, description="Overlap between consecutive chunks")
+class ChunkItem(BaseModel):
+    """One FFP chunk (same fields as `doc_processing.ffp.pipeline.Chunk`)."""
+
+    chunk_id: str = Field(..., description="Stable chunk identifier")
+    content: str = Field(..., description="Chunk text, table, or image description")
+    type: str = Field(..., description="One of text, table, image")
+    doc_id: str = Field(..., description="Document id")
+    page: int | None = Field(None, description="Source page when available")
+    bundle_id: str = Field(..., description="Semantic bundle id")
+    section_title: str | None = Field(None, description="Nearest section heading")
+    title_summary: str = Field("", description="LLM section summary")
+    publish_date: str | None = Field(None, description="Document publish date if provided")
+    prev_chunk: str | None = Field(None, description="Previous chunk id")
+    next_chunk: str | None = Field(None, description="Next chunk id")
 
 
 class ChunkResponse(BaseModel):
-    """List of text chunks for RAG."""
-    chunks: list[str] = Field(..., description="Text chunks")
+    """FFP pipeline chunks for RAG."""
+    chunks: list[ChunkItem] = Field(..., description="Structured chunks from FinancialFilingsPipeline")
 
 
 class ConvertResponse(BaseModel):
@@ -198,6 +207,113 @@ _IMAGE_EXTENSIONS: set[str] = {
     ".tif",
 }
 
+_CHUNK_EXTENSIONS: frozenset[str] = frozenset({
+    ".pdf",
+    ".md",
+    ".markdown",
+    ".html",
+    ".htm",
+    ".xhtml",
+    ".xml",
+    ".xbrl",
+})
+
+
+def _infer_chunk_extension_from_upload(file: UploadFile) -> str | None:
+    """Infer extension for FFP chunking (pdf, markdown, html, xbrl)."""
+    fn = (file.filename or "").strip()
+    if "." in fn:
+        ext = f".{fn.rsplit('.', 1)[-1]}".lower()
+        if ext == ".markdown":
+            ext = ".md"
+        return ext
+    ct = (file.content_type or "").lower()
+    if "pdf" in ct:
+        return ".pdf"
+    if "markdown" in ct or ct in ("text/md", "text/x-markdown"):
+        return ".md"
+    if "html" in ct:
+        return ".html"
+    if "xml" in ct or ct in ("application/xml", "text/xml"):
+        return ".xml"
+    return None
+
+
+def _suffix_from_url_for_chunk(url: str) -> str:
+    path = url.split("?")[0].lower()
+    if path.endswith(".pdf"):
+        return ".pdf"
+    if path.endswith(".markdown"):
+        return ".md"
+    if path.endswith(".md"):
+        return ".md"
+    if path.endswith(".xhtml"):
+        return ".xhtml"
+    if path.endswith(".html"):
+        return ".html"
+    if path.endswith(".htm"):
+        return ".htm"
+    if path.endswith(".xbrl"):
+        return ".xbrl"
+    if path.endswith(".xml"):
+        return ".xml"
+    return ".bin"
+
+
+def _normalize_chunk_ext(ext: str) -> str:
+    e = ext.strip().lower()
+    if not e.startswith("."):
+        e = f".{e}"
+    if e == ".markdown":
+        return ".md"
+    return e
+
+
+def _ffp_chunk_document_sync(
+    source: bytes | Path,
+    *,
+    ext: str,
+    doc_id: str,
+    publish_date: str | None,
+    pdf_backend: Literal["easyocr", "vlm"],
+) -> list[dict[str, Any]]:
+    """Run FinancialFilingsPipeline on supported inputs (sync; call via asyncio.to_thread)."""
+    from doc_processing.ffp.pipeline import FinancialFilingsPipeline
+
+    ext_norm = _normalize_chunk_ext(ext)
+    if ext_norm not in _CHUNK_EXTENSIONS:
+        raise ValueError(f"Unsupported file type for chunking: {ext_norm}")
+
+    pipeline = FinancialFilingsPipeline()
+    if ext_norm in (".xml", ".xbrl"):
+        if isinstance(source, bytes):
+            md = xbrl_to_markdown(source, file_extension=ext_norm)
+        else:
+            md = xbrl_to_markdown(source)
+        if not (md or "").strip():
+            return []
+        return pipeline.run(
+            md.encode("utf-8"),
+            doc_id=doc_id,
+            publish_date=publish_date,
+            file_extension=".md",
+        )
+    if isinstance(source, bytes):
+        return pipeline.run(
+            source,
+            doc_id=doc_id,
+            publish_date=publish_date,
+            file_extension=ext_norm,
+            pdf_backend=pdf_backend,
+        )
+    return pipeline.run(
+        source,
+        doc_id=doc_id,
+        publish_date=publish_date,
+        file_extension=None,
+        pdf_backend=pdf_backend,
+    )
+
 
 @router.post("/convert-ms-docs", response_model=ConvertResponse)
 async def convert_ms_docs(
@@ -266,7 +382,7 @@ async def process_using_unstructured(
             content, _ = await _read_upload(file)
             inferred_type = file_type or _infer_file_type_from_url(file.filename or "", None)
             result = await asyncio.to_thread(
-                process_file,
+                process_using_unstructured_service,
                 content,
                 file_type=inferred_type,
             )
@@ -276,7 +392,7 @@ async def process_using_unstructured(
             tmp = await _source_from_url_to_temp(str(url), 60)
             inferred_type = file_type or _infer_file_type_from_url(str(url), None)
             result = await asyncio.to_thread(
-                process_file,
+                process_using_unstructured_service,
                 tmp,
                 file_type=inferred_type,
             )
@@ -498,7 +614,91 @@ async def process_using_glm(
 
 
 @router.post("/chunk", response_model=ChunkResponse)
-async def chunk_document(req: ChunkRequest) -> ChunkResponse:
-    """Split text into overlapping chunks for RAG."""
-    chunks = chunk_text(req.text, req.chunk_size, req.chunk_overlap)
-    return ChunkResponse(chunks=chunks)
+async def chunk_document(
+    file: UploadFile | None = File(None),
+    url: HttpUrl | None = None,
+    doc_id: str | None = Query(
+        None,
+        description="Stored on each chunk; default is upload filename stem or URL path stem",
+    ),
+    publish_date: str | None = Query(None, description="Optional publish date metadata on chunks"),
+    pdf_backend: Literal["easyocr", "vlm"] = Query(
+        "vlm",
+        description="Docling backend when the input is PDF",
+    ),
+) -> ChunkResponse:
+    """
+    Chunk a document using the Financial Filings Pipeline (FFP).
+
+    Accepts **PDF**, **Markdown**, **HTML** (including `.xhtml`), or **XBRL** (`.xml` / `.xbrl`).
+    XBRL is converted to markdown first, then chunked like markdown.
+
+    Provide either `file` (upload) or `url` (fetched to a temp file).
+    """
+    tmp: Path | None = None
+    try:
+        if file is not None:
+            content, ext = await _read_upload(file)
+            if ext is None:
+                ext = _infer_chunk_extension_from_upload(file)
+            ext_norm = _normalize_chunk_ext(ext or ".bin")
+            if ext_norm not in _CHUNK_EXTENSIONS:
+                raise HTTPException(
+                    status_code=415,
+                    detail=(
+                        "Unsupported document type. Chunking accepts PDF, Markdown, HTML, "
+                        "or XBRL (.xml/.xbrl)."
+                    ),
+                )
+            resolved_doc_id = doc_id or Path((file.filename or "upload").strip() or "upload").stem
+            raw = await asyncio.to_thread(
+                _ffp_chunk_document_sync,
+                content,
+                ext=ext_norm,
+                doc_id=resolved_doc_id,
+                publish_date=publish_date,
+                pdf_backend=pdf_backend,
+            )
+            return ChunkResponse(chunks=[ChunkItem(**d) for d in raw])
+
+        if url is not None:
+            default_sfx = _suffix_from_url_for_chunk(str(url))
+            tmp = await _source_from_url_to_temp(str(url), 120, default_suffix=default_sfx)
+            suffix = (tmp.suffix.lower() or default_sfx).strip()
+            ext_norm = _normalize_chunk_ext(suffix or ".bin")
+            if ext_norm not in _CHUNK_EXTENSIONS:
+                raise HTTPException(
+                    status_code=415,
+                    detail=(
+                        "Unsupported document type. Chunking accepts PDF, Markdown, HTML, "
+                        "or XBRL (.xml/.xbrl)."
+                    ),
+                )
+            path_part = urlparse(str(url).rstrip("/")).path.rsplit("/", 1)[-1] or "document"
+            url_stem = path_part.rsplit(".", 1)[0] if "." in path_part else path_part
+            resolved_doc_id = doc_id or url_stem or "document"
+            raw = await asyncio.to_thread(
+                _ffp_chunk_document_sync,
+                tmp,
+                ext=ext_norm,
+                doc_id=resolved_doc_id,
+                publish_date=publish_date,
+                pdf_backend=pdf_backend,
+            )
+            return ChunkResponse(chunks=[ChunkItem(**d) for d in raw])
+
+        raise HTTPException(status_code=422, detail="Either file or url must be provided")
+    except ValueError as e:
+        msg = str(e)
+        if "Unsupported file type" in msg:
+            raise HTTPException(status_code=415, detail=msg) from e
+        raise HTTPException(status_code=422, detail=msg) from e
+    except DocumentFetchError as e:
+        raise _http_exception_for_fetch_error(e)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)

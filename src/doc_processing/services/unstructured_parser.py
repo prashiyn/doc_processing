@@ -1,4 +1,4 @@
-"""File processor using the Unstructured pipeline.
+"""File parser using the Unstructured pipeline.
 
 Extracts tables, images, and full metadata for PDF, image, and Markdown files.
 Uses hi_res strategy for table extraction (see table-extraction-from-pdf and
@@ -70,7 +70,7 @@ def _element_to_image_block(el: Any) -> ImageBlock:
     return ImageBlock(metadata=meta, image_base64=image_base64)
 
 
-def process_file(
+def process_using_unstructured(
     file_content: bytes | str | Path,
     file_type: Literal["pdf", "image", "markdown"] | None = None,
     *,
@@ -158,3 +158,7 @@ def process_file(
     finally:
         if isinstance(file_content, bytes) and path.exists():
             path.unlink(missing_ok=True)
+
+
+# Backward-compatible alias while callsites migrate.
+process_file = process_using_unstructured

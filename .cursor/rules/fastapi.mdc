@@ -69,7 +69,7 @@ alwaysApply: false
 # FastAPI Conventions
 
 - One router per domain (e.g. `documents`, `llm`, `health`); mount under a clear prefix (`/documents`, `/llm`).
-- Use Pydantic models for request/response bodies; name them with `Request`/`Response` suffix (e.g. `ChunkRequest`, `CompletionResponse`).
+- Use Pydantic models for request/response bodies; name them with `Request`/`Response` suffix (e.g. `CompletionRequest`, `CompletionResponse`).
 - Prefer dependency injection for `Settings` and shared clients; use `Depends(get_settings)` when needed.
 - Return 4xx for client errors (400 validation, 404 not found, 422 unprocessable) and 5xx for server/upstream failures (502 when LLM or converter fails).
 
@@ -77,19 +77,23 @@ alwaysApply: false
 
 ```python
 # BAD: raw dict, no validation
-@router.post("/chunk")
-async def chunk(body: dict):
-    return {"chunks": body["text"][:1]}
+@router.post("/items")
+async def items(body: dict):
+    return {"items": body["ids"][:1]}
 
 # GOOD: Pydantic model, typed response
-class ChunkRequest(BaseModel):
-    text: str
-    chunk_size: int = 512
+class ItemCreate(BaseModel):
+    name: str
 
-@router.post("/chunk", response_model=ChunkResponse)
-async def chunk(req: ChunkRequest) -> ChunkResponse:
-    chunks = chunk_text(req.text, req.chunk_size)
-    return ChunkResponse(chunks=chunks)
+class ItemResponse(BaseModel):
+    id: str
+    label: str
+
+@router.post("/items", response_model=list[ItemResponse])
+async def create_item(req: ItemCreate) -> list[ItemResponse]:
+    return [ItemResponse(id="1", label=req.name)]
 ```
+
+For `/chunk`, use file upload or URL plus `ChunkResponse` with `list[ChunkItem]` (FFP pipeline output), not a raw text body.
 
 - Use `UploadFile = File(...)` for file uploads; read content with `await file.read()` and pass bytes to services.
