@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "doc-processing",
-    "description": "Document processing, conversion to markdown, chunking for RAG, and LLM completions.",
+    "description": "Document processing, conversion to markdown, and chunking for RAG.",
     "version": "0.1.0"
   },
   "paths": {
@@ -588,112 +588,6 @@
           }
         }
       }
-    },
-    "/llm/complete": {
-      "post": {
-        "tags": [
-          "llm"
-        ],
-        "summary": "Completion",
-        "description": "Get a completion from the configured LLM (with fallback). Used only for document processing.",
-        "operationId": "completion_llm_complete_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CompletionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CompletionResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/llm/models": {
-      "get": {
-        "tags": [
-          "llm"
-        ],
-        "summary": "Models",
-        "description": "List default, fallback, and all configured LLM models.",
-        "operationId": "models_llm_models_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/llm/embeddings": {
-      "post": {
-        "tags": [
-          "llm"
-        ],
-        "summary": "Embeddings",
-        "description": "Generate embeddings for text/image inputs via LiteLLM or direct Ollama fallback.",
-        "operationId": "embeddings_llm_embeddings_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmbeddingRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmbeddingResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -828,23 +722,19 @@
         "properties": {
           "chunk_id": {
             "type": "string",
-            "title": "Chunk Id",
-            "description": "Stable chunk identifier"
+            "title": "Chunk Id"
           },
           "content": {
             "type": "string",
-            "title": "Content",
-            "description": "Chunk text, table, or image description"
+            "title": "Content"
           },
           "type": {
             "type": "string",
-            "title": "Type",
-            "description": "One of text, table, image"
+            "title": "Type"
           },
           "doc_id": {
             "type": "string",
-            "title": "Doc Id",
-            "description": "Document id"
+            "title": "Doc Id"
           },
           "page": {
             "anyOf": [
@@ -855,13 +745,11 @@
                 "type": "null"
               }
             ],
-            "title": "Page",
-            "description": "Source page when available"
+            "title": "Page"
           },
           "bundle_id": {
             "type": "string",
-            "title": "Bundle Id",
-            "description": "Semantic bundle id"
+            "title": "Bundle Id"
           },
           "section_title": {
             "anyOf": [
@@ -872,14 +760,11 @@
                 "type": "null"
               }
             ],
-            "title": "Section Title",
-            "description": "Nearest section heading"
+            "title": "Section Title"
           },
           "title_summary": {
             "type": "string",
-            "title": "Title Summary",
-            "description": "LLM section summary",
-            "default": ""
+            "title": "Title Summary"
           },
           "publish_date": {
             "anyOf": [
@@ -890,8 +775,7 @@
                 "type": "null"
               }
             ],
-            "title": "Publish Date",
-            "description": "Document publish date if provided"
+            "title": "Publish Date"
           },
           "prev_chunk": {
             "anyOf": [
@@ -902,8 +786,7 @@
                 "type": "null"
               }
             ],
-            "title": "Prev Chunk",
-            "description": "Previous chunk id"
+            "title": "Prev Chunk"
           },
           "next_chunk": {
             "anyOf": [
@@ -914,8 +797,15 @@
                 "type": "null"
               }
             ],
-            "title": "Next Chunk",
-            "description": "Next chunk id"
+            "title": "Next Chunk"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkReferenceItem"
+            },
+            "type": "array",
+            "title": "References",
+            "description": "Cross-references extracted from chunk text"
           }
         },
         "type": "object",
@@ -924,10 +814,71 @@
           "content",
           "type",
           "doc_id",
-          "bundle_id"
+          "page",
+          "bundle_id",
+          "section_title",
+          "title_summary",
+          "publish_date",
+          "prev_chunk",
+          "next_chunk"
         ],
         "title": "ChunkItem",
-        "description": "One FFP chunk (same fields as `doc_processing.ffp.pipeline.Chunk`)."
+        "description": "One FFP chunk; fields mirror `doc_processing.ffp.pipeline.Chunk`."
+      },
+      "ChunkReferenceItem": {
+        "properties": {
+          "reference_text": {
+            "type": "string",
+            "title": "Reference Text",
+            "description": "Exact phrase as it appears in the chunk"
+          },
+          "reference_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "TABLE",
+                  "FIGURE",
+                  "SECTION",
+                  "SUBSECTION",
+                  "APPENDIX",
+                  "NOTE",
+                  "FOOTNOTE",
+                  "SCHEDULE",
+                  "STATEMENT",
+                  "REGULATION",
+                  "OTHER"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Reference Type",
+            "description": "TABLE, FIGURE, SECTION, SUBSECTION, APPENDIX, NOTE, FOOTNOTE, SCHEDULE, STATEMENT, REGULATION, OTHER"
+          },
+          "target_label": {
+            "type": "string",
+            "title": "Target Label",
+            "description": "Normalized identifier for the target"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Model confidence 0\u20131"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reference_text",
+          "reference_type",
+          "target_label",
+          "confidence"
+        ],
+        "title": "ChunkReferenceItem",
+        "description": "One extracted cross-reference (aligned with docs/REFERENCES.md)."
       },
       "ChunkResponse": {
         "properties": {
@@ -947,103 +898,6 @@
         "title": "ChunkResponse",
         "description": "FFP pipeline chunks for RAG."
       },
-      "CompletionRequest": {
-        "properties": {
-          "provider": {
-            "type": "string",
-            "title": "Provider",
-            "description": "Provider alias: groq, ollama, openai, anthropic, tencent"
-          },
-          "messages": {
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Messages",
-            "description": "Chat messages, e.g. [{\"role\": \"user\", \"content\": \"...\"}]"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model",
-            "description": "Override default model (LiteLLM model string)"
-          },
-          "reasoning_effort": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Effort",
-            "description": "Optional reasoning level for models that support reasoning. Allowed values: low, medium, high."
-          },
-          "response_format": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResponseFormatJsonObject"
-              },
-              {
-                "$ref": "#/components/schemas/ResponseFormatJsonSchema"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Response Format",
-            "description": "Optional structured output request (LiteLLM/OpenAI response_format). Example: {\"type\": \"json_object\"} or {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"...\", \"schema\": {...}, \"strict\": true}}."
-          }
-        },
-        "type": "object",
-        "required": [
-          "provider",
-          "messages"
-        ],
-        "title": "CompletionRequest",
-        "description": "Request for LLM completion (LiteLLM)."
-      },
-      "CompletionResponse": {
-        "properties": {
-          "content": {
-            "type": "string",
-            "title": "Content",
-            "description": "Assistant reply text"
-          },
-          "parsed": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parsed",
-            "description": "If response_format was used and content is valid JSON, this contains parsed JSON."
-          }
-        },
-        "type": "object",
-        "required": [
-          "content"
-        ],
-        "title": "CompletionResponse",
-        "description": "LLM completion content."
-      },
       "ConvertResponse": {
         "properties": {
           "markdown": {
@@ -1058,182 +912,6 @@
         ],
         "title": "ConvertResponse",
         "description": "Result of document-to-markdown conversion."
-      },
-      "EmbeddingDataItem": {
-        "properties": {
-          "object": {
-            "type": "string",
-            "title": "Object",
-            "description": "Usually 'embedding'."
-          },
-          "index": {
-            "type": "integer",
-            "title": "Index",
-            "description": "Index of this embedding in the request."
-          },
-          "embedding": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "number"
-                },
-                "type": "array"
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Embedding",
-            "description": "Embedding vector (float list) or base64 string depending on encoding."
-          }
-        },
-        "type": "object",
-        "required": [
-          "object",
-          "index",
-          "embedding"
-        ],
-        "title": "EmbeddingDataItem",
-        "description": "One embedding vector item."
-      },
-      "EmbeddingRequest": {
-        "properties": {
-          "provider": {
-            "type": "string",
-            "title": "Provider",
-            "description": "Provider alias: openai, ollama, vertex_ai, etc."
-          },
-          "input": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Input",
-            "description": "Input text or list of inputs. For image embeddings on supported models, pass base64 data URI strings."
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model",
-            "description": "Override embedding model (LiteLLM model string, e.g. openai/text-embedding-3-small)."
-          },
-          "encoding_format": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "float",
-                  "base64"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Encoding Format",
-            "description": "Optional embedding encoding format."
-          },
-          "dimensions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dimensions",
-            "description": "Optional output dimensions for models that support it."
-          },
-          "input_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Input Type",
-            "description": "Optional provider-specific input type (e.g. search_document, query, image)."
-          },
-          "user": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User",
-            "description": "Optional end-user identifier."
-          }
-        },
-        "type": "object",
-        "required": [
-          "provider",
-          "input"
-        ],
-        "title": "EmbeddingRequest",
-        "description": "Request for embedding generation (text/image data URIs supported by model/provider)."
-      },
-      "EmbeddingResponse": {
-        "properties": {
-          "object": {
-            "type": "string",
-            "title": "Object",
-            "description": "Usually 'list'."
-          },
-          "model": {
-            "type": "string",
-            "title": "Model",
-            "description": "Model used to generate embeddings."
-          },
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/EmbeddingDataItem"
-            },
-            "type": "array",
-            "title": "Data",
-            "description": "Embedding vectors."
-          },
-          "usage": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Usage",
-            "description": "Optional token usage stats if provided by backend."
-          }
-        },
-        "type": "object",
-        "required": [
-          "object",
-          "model",
-          "data"
-        ],
-        "title": "EmbeddingResponse",
-        "description": "Embedding response in OpenAI-compatible format."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1272,70 +950,6 @@
         "type": "object",
         "title": "ImageItem",
         "description": "One extracted image block."
-      },
-      "JsonSchemaPayload": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "Schema name"
-          },
-          "schema": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Schema",
-            "description": "JSON Schema object"
-          },
-          "strict": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Strict",
-            "description": "Whether to enforce strict schema adherence when supported."
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "schema"
-        ],
-        "title": "JsonSchemaPayload",
-        "description": "Payload for response_format.type=json_schema."
-      },
-      "ModelsResponse": {
-        "properties": {
-          "default_model": {
-            "type": "string",
-            "title": "Default Model",
-            "description": "Default model for completions"
-          },
-          "fallback_model": {
-            "type": "string",
-            "title": "Fallback Model",
-            "description": "Fallback model on failure"
-          },
-          "models": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Models",
-            "description": "List of configured model strings"
-          }
-        },
-        "type": "object",
-        "required": [
-          "default_model",
-          "fallback_model",
-          "models"
-        ],
-        "title": "ModelsResponse",
-        "description": "Configured LLM models and defaults."
       },
       "PdfToMarkdownResponse": {
         "properties": {
@@ -1390,43 +1004,6 @@
         ],
         "title": "ProcessFromUrlResponse",
         "description": "Result of process-from-url: tables and images."
-      },
-      "ResponseFormatJsonObject": {
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "json_object",
-            "title": "Type",
-            "description": "Request valid JSON object output."
-          }
-        },
-        "type": "object",
-        "required": [
-          "type"
-        ],
-        "title": "ResponseFormatJsonObject",
-        "description": "LiteLLM response_format for JSON object output."
-      },
-      "ResponseFormatJsonSchema": {
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "json_schema",
-            "title": "Type",
-            "description": "Request output matching the provided JSON schema."
-          },
-          "json_schema": {
-            "$ref": "#/components/schemas/JsonSchemaPayload",
-            "description": "Schema descriptor and JSON schema body."
-          }
-        },
-        "type": "object",
-        "required": [
-          "type",
-          "json_schema"
-        ],
-        "title": "ResponseFormatJsonSchema",
-        "description": "LiteLLM response_format for JSON schema output."
       },
       "TableItem": {
         "properties": {

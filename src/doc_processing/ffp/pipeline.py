@@ -9,14 +9,15 @@ The final output is a list of chunk objects consistent with
 `docs/DOCUMENT_CHUNKING.md` (see "Chunk object" schema).
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
 import tempfile
 from typing import Any, Iterable, Literal
 
-from doc_processing.ffp.multimodal.table_extractor import TableExtractor
 from doc_processing.ffp.multimodal.image_captioner import ImageCaptioner
+from doc_processing.ffp.multimodal.reference_extractor import ReferenceExtractor
+from doc_processing.ffp.multimodal.table_extractor import TableExtractor
 from doc_processing.ffp.processing.chunk_segmenter import ChunkSegmenter
 from doc_processing.ffp.processing.deduplicator import Deduplicator
 from doc_processing.ffp.processing.coreference_resolver import CoreferenceResolver
@@ -41,6 +42,7 @@ class Chunk:
     publish_date: str | None
     prev_chunk: str | None
     next_chunk: str | None
+    references: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -55,6 +57,7 @@ class Chunk:
             "publish_date": self.publish_date,
             "prev_chunk": self.prev_chunk,
             "next_chunk": self.next_chunk,
+            "references": list(self.references),
         }
 
 
@@ -77,6 +80,7 @@ class FinancialFilingsPipeline:
         self._summarizer = SectionSummarizer()
         self._table_extractor = TableExtractor()
         self._image_captioner = ImageCaptioner()
+        self._reference_extractor = ReferenceExtractor()
 
     # ---------- Public API ----------
 
@@ -356,7 +360,10 @@ class FinancialFilingsPipeline:
         # 4. Section-level summaries
         chunks = self._summarizer.summarize(chunks)
 
-        # 5. Attach IDs, doc-level metadata, and prev/next pointers
+        # 5. Cross-reference extraction per chunk
+        chunks = self._reference_extractor.enrich_chunks(chunks)
+
+        # 6. Attach IDs, doc-level metadata, and prev/next pointers
         return self._finalize_chunks(chunks, doc_id=doc_id, publish_date=publish_date)
 
     def _finalize_chunks(
@@ -377,6 +384,7 @@ class FinancialFilingsPipeline:
             bundle_id = c.get("bundle_id") or ""
             section_title = c.get("section_title")
             title_summary = c.get("title_summary") or ""
+            references = c.get("references") if isinstance(c.get("references"), list) else []
 
             next_id: str | None = None  # filled in next iteration
             # We'll set next_id of previous chunk once we know current id.
@@ -396,6 +404,7 @@ class FinancialFilingsPipeline:
                 publish_date=publish_date,
                 prev_chunk=prev_id,
                 next_chunk=next_id,
+                references=[r for r in references if isinstance(r, dict)],
             )
             out.append(chunk.to_dict())
             prev_id = chunk_id

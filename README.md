@@ -1,6 +1,8 @@
 # doc-processing
 
-Document processing, conversions and chunking for RAG. Uses **docling** (VLM, EasyOCR), **unstructured** (PDF, MD, XLS, PPT, DOC, CSV, images), **ixbrl-parse**, **markitdown**, and **litellm** for LLM access.
+Document processing, conversions and chunking for RAG. Uses **docling** (VLM, EasyOCR), **unstructured** (PDF, MD, XLS, PPT, DOC, CSV, images), **ixbrl-parse**, and **markitdown**.
+
+LLM APIs are owned by the standalone `llm-service` and are not exposed from this service.
 
 ## Setup
 
@@ -13,7 +15,3 @@ uv sync
 ```bash
 uv run uvicorn doc_processing.main:app --reload
 ```
-
-## LLM providers
-
-Configured via env: Groq, Ollama, OpenAI, Anthropic (Claude), Tencent. See `.env.example`.

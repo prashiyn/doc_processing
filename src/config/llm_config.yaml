@@ -1,0 +1,49 @@
+# Remote llm-service runtime config for doc-processing use-cases.
+# Each use-case can have its own provider/model without hardcoding in code.
+
+service:
+  # Base URL for the standalone llm-service.
+  base_url: "http://localhost:8001"
+  # Optional request timeout (seconds) for llm-service calls.
+  timeout_seconds: 120
+
+use_cases:
+  # Default text completion for generic runtime calls.
+  default_complete:
+    provider: "openai"
+    model: "openai/gpt-4o-mini"
+
+  # Coreference resolution in chunking pipeline.
+  chunk_coreference:
+    provider: "openai"
+    model: "openai/gpt-4o-mini"
+
+  # Section-level summarization in chunking pipeline.
+  chunk_section_summary:
+    provider: "openai"
+    model: "openai/gpt-4o-mini"
+
+  # Table-to-text extraction in chunking pipeline.
+  chunk_table_extraction:
+    provider: "openai"
+    model: "openai/gpt-4o-mini"
+
+  # Image caption generation in chunking pipeline.
+  chunk_image_caption:
+    provider: "openai"
+    model: "openai/gpt-4o-mini"
+
+  # Cross-reference extraction for chunk references.
+  chunk_reference_extraction:
+    provider: "openai"
+    model: "openai/gpt-4o-mini"
+
+  # Embedding use-case for query text vectors.
+  embedding_query:
+    provider: "openai"
+    model: "openai/text-embedding-3-small"
+
+  # Embedding use-case for document/chunk vectors.
+  embedding_document:
+    provider: "openai"
+    model: "openai/text-embedding-3-small"

@@ -23,6 +23,7 @@ def _sample_ffp_chunks() -> list[dict]:
             "publish_date": None,
             "prev_chunk": None,
             "next_chunk": None,
+            "references": [],
         }
     ]
 

@@ -5,6 +5,7 @@ Coreference resolution over chunks using an LLM.
 
 Uses a sliding window of previous chunks as context (same section title),
 with window size configured via `config/chunking.yaml` (params.coreference_context_k).
+LLM calls are routed via remote llm-service runtime.
 """
 
 from typing import Any, Iterable
@@ -12,30 +13,28 @@ from typing import Any, Iterable
 import yaml
 
 from doc_processing.config import get_config_dir
-from doc_processing.llms.client import LLMClient
+from doc_processing.llm_runtime import HttpLLMRuntime
 
 
-def _load_coref_config() -> tuple[int, str | None]:
+def _load_coref_config() -> int:
     path = get_config_dir() / "chunking.yaml"
     if not path.exists():
-        return 4, None
+        return 4
     cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     params = cfg.get("params") or {}
-    models = cfg.get("models") or {}
     try:
         k = int(params.get("coreference_context_k", 4))
     except (TypeError, ValueError):
         k = 4
-    model = models.get("coreference_model")
-    return k, str(model) if model else None
+    return k
 
 
 class CoreferenceResolver:
     """LLM-based coreference resolver for chunk text."""
 
-    def __init__(self, client: LLMClient | None = None) -> None:
-        self._client = client or LLMClient()
-        self._k, self._model = _load_coref_config()
+    def __init__(self, client: HttpLLMRuntime | None = None) -> None:
+        self._client = client or HttpLLMRuntime()
+        self._k = _load_coref_config()
 
     def resolve(self, chunks: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         """Rewrite each chunk's text to resolve pronouns using nearby context."""
@@ -71,7 +70,10 @@ class CoreferenceResolver:
                 "Preserve the meaning and keep the same language."
             )
             messages = [{"role": "user", "content": prompt}]
-            new_text = self._client.complete_with_fallback(messages, model=self._model) or text
+            new_text = self._client.complete_with_fallback(
+                messages,
+                use_case="chunk_coreference",
+            ) or text
             new_chunk = dict(chunk)
             new_chunk["content"] = new_text.strip() or text
             resolved.append(new_chunk)

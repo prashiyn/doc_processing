@@ -3,39 +3,21 @@ from __future__ import annotations
 """
 Figure/chart captioning using the shared LLM client.
 
-Model selection is controlled by `config/chunking.yaml` (models.image_caption_model).
+Model selection is controlled by `config/llm_config.yaml` use-case mapping.
 """
 
 from pathlib import Path
-from typing import Any
 
 import base64
-import yaml
 
-from doc_processing.config import get_config_dir
-from doc_processing.llms.client import LLMClient
-
-
-def _load_chunking_config() -> dict[str, Any]:
-    path = get_config_dir() / "chunking.yaml"
-    if not path.exists():
-        return {}
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-
-
-def _get_image_model_name(cfg: dict[str, Any]) -> str | None:
-    models = cfg.get("models") or {}
-    model = models.get("image_caption_model")
-    return str(model) if model else None
+from doc_processing.llm_runtime import HttpLLMRuntime
 
 
 class ImageCaptioner:
     """Caption financial figures (charts, diagrams) with key insights."""
 
-    def __init__(self, client: LLMClient | None = None) -> None:
-        self._client = client or LLMClient()
-        self._cfg = _load_chunking_config()
-        self._model = _get_image_model_name(self._cfg)
+    def __init__(self, client: HttpLLMRuntime | None = None) -> None:
+        self._client = client or HttpLLMRuntime()
 
     @staticmethod
     def _encode_image(path: str | Path) -> str:
@@ -68,5 +50,8 @@ class ImageCaptioner:
             },
         ]
 
-        return self._client.complete_with_fallback(messages, model=self._model)
+        return self._client.complete_with_fallback(
+            messages,
+            use_case="chunk_image_caption",
+        )
 

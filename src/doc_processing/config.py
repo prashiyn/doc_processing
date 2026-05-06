@@ -2,7 +2,7 @@
 Application and config directory configuration.
 
 Single source of truth for app settings (env/.env) and config file paths.
-All YAML configs (llms.yaml, groq_limits.yaml, glm_ocr_ollama.yaml, etc.) live under
+All YAML configs (chunking, OCR, llm_runtime use-cases, etc.) live under
 config_dir. Set DOC_PROCESSING_CONFIG_DIR to override; otherwise defaults to
 src/config or config under cwd.
 """
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     app_name: str = "doc-processing"
     debug: bool = False
 
-    # Config directory for YAML files (llms.yaml, groq_limits.yaml, glm_ocr_ollama.yaml, etc.)
+    # Config directory for YAML files (chunking.yaml, llm_config.yaml, glm/deepseek OCR config, etc.)
     config_dir: str | None = None
 
     # Temp directory for downloaded documents; files must be deleted after processing
@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     tencent_secret_id: str | None = None
     tencent_secret_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
+    # Remote llm-service base URL used by doc-processing runtime client.
+    doc_llm_base_url: str = Field(default="http://localhost:8001", validation_alias="DOC_LLM_BASE_URL")
+    # Shared internal auth token for doc-processing -> llm-service calls.
+    service_auth_token: str | None = Field(default=None, validation_alias="SERVICE_AUTH_TOKEN")
 
 
 @lru_cache

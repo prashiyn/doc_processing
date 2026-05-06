@@ -28,24 +28,11 @@ from doc_processing.services.document_fetch import (
     temp_path_for_document,
 )
 from doc_processing.services.unstructured_parser import FileProcessorResult
+from doc_processing.ffp.chunk_schema import get_chunk_item_model
 
 router = APIRouter()
 
-
-class ChunkItem(BaseModel):
-    """One FFP chunk (same fields as `doc_processing.ffp.pipeline.Chunk`)."""
-
-    chunk_id: str = Field(..., description="Stable chunk identifier")
-    content: str = Field(..., description="Chunk text, table, or image description")
-    type: str = Field(..., description="One of text, table, image")
-    doc_id: str = Field(..., description="Document id")
-    page: int | None = Field(None, description="Source page when available")
-    bundle_id: str = Field(..., description="Semantic bundle id")
-    section_title: str | None = Field(None, description="Nearest section heading")
-    title_summary: str = Field("", description="LLM section summary")
-    publish_date: str | None = Field(None, description="Document publish date if provided")
-    prev_chunk: str | None = Field(None, description="Previous chunk id")
-    next_chunk: str | None = Field(None, description="Next chunk id")
+ChunkItem = get_chunk_item_model()
 
 
 class ChunkResponse(BaseModel):

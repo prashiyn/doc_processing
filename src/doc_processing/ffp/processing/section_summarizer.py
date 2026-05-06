@@ -4,35 +4,20 @@ from __future__ import annotations
 Section-level metadata summaries for chunks.
 
 Each chunk receives a short summary derived from its section text,
-using an LLM model configured via `config/chunking.yaml`
-(`models.section_summarization_model`).
+using remote llm-service via runtime client.
 """
 
 from collections import defaultdict
 from typing import Any, Iterable
 
-import yaml
-
-from doc_processing.config import get_config_dir
-from doc_processing.llms.client import LLMClient
-
-
-def _load_summary_model() -> str | None:
-    path = get_config_dir() / "chunking.yaml"
-    if not path.exists():
-        return None
-    cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    models = cfg.get("models") or {}
-    model = models.get("section_summarization_model")
-    return str(model) if model else None
+from doc_processing.llm_runtime import HttpLLMRuntime
 
 
 class SectionSummarizer:
     """Generate section-level summaries and attach them to chunks."""
 
-    def __init__(self, client: LLMClient | None = None) -> None:
-        self._client = client or LLMClient()
-        self._model = _load_summary_model()
+    def __init__(self, client: HttpLLMRuntime | None = None) -> None:
+        self._client = client or HttpLLMRuntime()
 
     def summarize(self, chunks: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         """Attach `title_summary` to each chunk based on its section's text."""
@@ -62,7 +47,10 @@ class SectionSummarizer:
                 f"Section text:\n{section_text}"
             )
             messages = [{"role": "user", "content": prompt}]
-            summary = self._client.complete_with_fallback(messages, model=self._model)
+            summary = self._client.complete_with_fallback(
+                messages,
+                use_case="chunk_section_summary",
+            )
             section_summaries[section_title] = (summary or "").strip()
 
         out: list[dict[str, Any]] = []
