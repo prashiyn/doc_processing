@@ -7,18 +7,14 @@ from typing import Any
 
 import yaml
 
-from doc_processing.config import get_config_dir, get_settings
+from doc_processing.config import get_config_dir
 
 
 @lru_cache(maxsize=1)
 def get_llm_runtime_config() -> dict[str, Any]:
     path = get_config_dir() / "llm_config.yaml"
     if not path.exists():
-        settings = get_settings()
-        return {
-            "service": {"base_url": settings.doc_llm_base_url, "timeout_seconds": 120},
-            "use_cases": {},
-        }
+        return {"service": {"timeout_seconds": 120}, "use_cases": {}}
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 

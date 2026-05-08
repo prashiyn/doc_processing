@@ -2,8 +2,6 @@
 # Each use-case can have its own provider/model without hardcoding in code.
 
 service:
-  # Base URL for the standalone llm-service.
-  base_url: "http://localhost:8001"
   # Optional request timeout (seconds) for llm-service calls.
   timeout_seconds: 120
 

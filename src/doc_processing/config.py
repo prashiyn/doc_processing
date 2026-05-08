@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     tencent_secret_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
     # Remote llm-service base URL used by doc-processing runtime client.
-    doc_llm_base_url: str = Field(default="http://localhost:8001", validation_alias="DOC_LLM_BASE_URL")
+    llm_service_base_url: str = Field(default="http://localhost:8001", validation_alias="LLM_SERVICE_BASE_URL")
     # Shared internal auth token for doc-processing -> llm-service calls.
     service_auth_token: str | None = Field(default=None, validation_alias="SERVICE_AUTH_TOKEN")
 

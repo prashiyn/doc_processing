@@ -36,10 +36,9 @@ class HttpLLMRuntime:
         settings = get_settings()
         service_cfg = get_service_llm_runtime_config()
 
-        cfg_url = service_cfg.get("base_url")
         cfg_timeout = service_cfg.get("timeout_seconds")
 
-        resolved_url = base_url or (str(cfg_url) if cfg_url else settings.doc_llm_base_url)
+        resolved_url = base_url or settings.llm_service_base_url
         resolved_timeout = timeout_seconds
         if resolved_timeout is None:
             if isinstance(cfg_timeout, (int, float)):
