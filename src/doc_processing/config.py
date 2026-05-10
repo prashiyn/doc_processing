@@ -31,13 +31,7 @@ class Settings(BaseSettings):
     # XBRL taxonomy directory for Docling XBRL backend (defaults to ./data/nse when unset)
     xbrl_taxonomy_dir: str | None = Field(default=None, validation_alias="XBRL_TAXONOMY_DIR")
 
-    # LLM provider keys (set in .env for litellm)
-    groq_api_key: str | None = None
-    openai_api_key: str | None = None
-    anthropic_api_key: str | None = None
-    tencent_secret_id: str | None = None
-    tencent_secret_key: str | None = None
-    ollama_base_url: str = "http://localhost:11434"
+
     # Remote llm-service base URL used by doc-processing runtime client.
     llm_service_base_url: str = Field(default="http://localhost:8001", validation_alias="LLM_SERVICE_BASE_URL")
     # Shared internal auth token for doc-processing -> llm-service calls.

@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "doc-processing",
-    "description": "Document processing, conversion to markdown, and chunking for RAG.",
+    "title": "llm-service",
+    "description": "LLM completions, embeddings, and related HTTP APIs for this stack (`/llm/*`).",
     "version": "0.1.0"
   },
   "paths": {
@@ -823,7 +823,7 @@
           "next_chunk"
         ],
         "title": "ChunkItem",
-        "description": "One FFP chunk; fields mirror `doc_processing.ffp.pipeline.Chunk`."
+        "description": "One FFP chunk; fields align with the llm-service pipeline `Chunk` model."
       },
       "ChunkReferenceItem": {
         "properties": {
@@ -867,7 +867,7 @@
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Confidence",
-            "description": "Model confidence 0\u20131"
+            "description": "Model confidence 0–1"
           }
         },
         "type": "object",
